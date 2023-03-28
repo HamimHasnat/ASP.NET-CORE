@@ -1,0 +1,206 @@
+﻿@model Core2.dept_ItemsVm
+@{
+    ViewData["Title"] = "Index";
+}
+<h1>Index</h1>
+<h4>Dept_ItemsVm</h4>
+<partial name="_PartialName"/>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="Index" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-md-6">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="form-group">
+                        <label asp-for="DeptId" class="control-label"></label>
+                        <input asp-for="DeptId" class="form-control" />
+                        <span asp-validation-for="DeptId" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="DeptName" class="control-label"></label>
+                        <input asp-for="DeptName" class="form-control" />
+                        <span asp-validation-for="DeptName" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Location" class="control-label"></label>
+                        <input asp-for="Location" class="form-control" />
+                        <span asp-validation-for="Location" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="ItemCode" class="control-label"></label>
+                        <input asp-for="ItemCode" class="form-control" />
+                        <span asp-validation-for="ItemCode" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="ItemName" class="control-label"></label>
+                        <input asp-for="ItemName" class="form-control" />
+                        <span asp-validation-for="ItemName" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Cost" class="control-label"></label>
+                        <input asp-for="Cost" class="form-control" />
+                        <span asp-validation-for="Cost" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Rate" class="control-label"></label>
+                        <input asp-for="Rate" class="form-control" />
+                        <span asp-validation-for="Rate" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="date" class="control-label"></label>
+                        <input type="date" name="date" id="date" class="form-control" />
+                        <span asp-validation-for="date" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="picture" class="control-label"></label>
+                        <input type="file" class="form-control" name="picture" id="picture" />
+                    </div>
+                    <div class="form-group">
+                        <input type="button" id="add" value="Add" class="btn btn-primary" />
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+</div>
+<h2 style="color:orange">@ViewBag.DeptError</h2>
+<div class="form-group">
+    <div class="col-md-offset-2 col-md-10">
+        <button type='button' id="save" class="btn btn-lg btn-default btn-primary">Save</button>
+        <button type='button' id="deleteall" class="btn btn-lg btn-default btn-primary">Remove</button>
+    </div>
+</div>
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+<script>
+    $(document).ready(function () {
+        var act = [];
+        var index = -1;
+        $("#DeptId").keyup(function () {
+            getAjax('/Dept_items/GetDept/' + $("#DeptId").val(), function (r) {
+                if (r != "") {
+                    $("#DeptName").val(r[0].deptname);
+                    $("#Location").val(r[0].location);
+                }
+                else {
+                    $("#DeptName").val("");
+                    $("#Location").val("");
+                }
+                showItems();
+            });
+
+        });
+        function showItems() {
+            getAjax('/Dept_items/GetItems/' + $("#DeptId").val(), function (data) {
+                act = data;
+                items();
+            });
+
+        }
+        function items() {
+            var j = 0;
+            //child table
+            var a = "<table class='table'><tr><th>Code</th><th>Name</th><th>Cost</th><th>Sale</th><th>Date</th><th>Picture</th><th></th></tr>";
+            for (d in act) {
+                today = ConvertDate(act[d].date);
+                a += `<tr><td>${act[d].itemcode}</td><td>${act[d].itemname}</td><td>${act[d].cost}</td><td>${act[d].rate}</td><td>${today}</td><td><img src='/uploads/${act[d].picture}' width='100'/></td><td><button type='button' onclick="edit1('${act[d].itemcode}','${act[d].itemname}','${act[d].cost}','${act[d].rate}',${j},'${today}','${act[d].picture}')">Edit</button><button type='button' onclick="remove(${j})">Remove</button></td></tr>`;
+                j++;
+            }
+            a += "</table>";
+            $("#items").html(a);
+        }
+        $("#add").click(function () {
+            var dt = $("#date").val();
+            if ($("#add").val() == "Add") {
+                var files = $("#picture").get(0).files;
+                var fname = files[0].name
+                var fileData = new FormData();
+                fileData.append(files[0].name, files[0]);
+                $.ajax({
+                    url: '/Dept_items/UploadFiles',
+                    type: "POST",
+                    contentType: false,
+                    processData: false,
+                    data: fileData,
+                    success: function (result) {
+                        //child table
+                        act.push({ "itemcode": $("#ItemCode").val(), "itemname": $("#ItemName").val(), "cost": $("#Cost").val(), "rate": $("#Rate").val(), "date": dt, "picture": fname });
+                        items();
+                    },
+                });
+            }
+            else {//update
+                v = { "itemcode": $("#ItemCode").val(), "itemname": $("#ItemName").val(), "cost": $("#Cost").val(), "rate": $("#Rate").val(), "date": dt, "picture": $("#picture").val().split('\\').pop() };
+                act[index] = v;
+                items();
+                $("#add").val("Add");
+            }
+        });
+
+        $("#save").click(function () {
+            var i = 0;
+            getAjax('/Dept_items/DeleteAll/' + $("#DeptId").val(), function (data) {
+                //parent table insert
+                url = `deptid=${$("#DeptId").val()}&deptname=${$("#DeptName").val()}&location=${$("#Location").val()}`;
+                getAjax('/Dept_items/InsertDept?' + url, function (data) {
+                    //child table insert
+                    for (d in act) {
+                        url1 = `itemcode=${act[d].itemcode}&itemname=${act[d].itemname}&deptid=${$("#DeptId").val()}&cost=${act[d].cost}&rate=${act[d].rate}&date=${act[d].date}&picture=${act[d].picture}`;
+                        getAjax('/Dept_items/Insertitems?' + url1, function (data) {
+                            i++;
+                            if (i == act.length) {
+                                act = [];
+                                items();
+                                window.location = "/myroute";
+                            }
+                        });
+                    }
+                });
+            });
+        });
+        $("#deleteall").click(function () {
+            getAjax('/Dept_items/DeleteAll/' + $("#DeptId").val(), function (d) {
+                window.location = '/myroute/';
+            });
+        });
+        remove = function (j) {
+            act.splice(j, 1);
+            items();
+        }
+        edit1 = function (a, b, c, d, e, f, g) {
+            $("#ItemCode").val(a);
+            $("#ItemName").val(b);
+            $("#Cost").val(c);
+            $("#Rate").val(d);
+            index = e;
+            $("#date").val(f);
+            $("#add").val("Edit");
+        }
+        function ConvertDate(f) {
+            value = new Date(f);
+            var dd = String(value.getDate()).padStart(2, '0');
+            var mm = String(value.getMonth() + 1).padStart(2, '0');
+            var yyyy = value.getFullYear();
+            today = yyyy + "-" + mm + "-" + dd;
+            return today;
+        }
+        function getAjax(url, callback) {
+            $.ajax({
+                dataType: "json",
+                url: url,
+                success: callback
+            });
+        }
+    })
+</script>
